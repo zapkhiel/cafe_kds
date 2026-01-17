@@ -1,0 +1,191 @@
+/* --- GENEL AYARLAR VE DEĞİŞKENLER --- */
+:root {
+    --bg-dark: #1e130c;
+    --sidebar-bg: #2b1b12;
+    --panel-bg: #3d2b1f;
+    --accent-orange: #f38d1d;
+    --text-muted: #b3a296;
+    --text-white: #ffffff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    display: flex; /* Yan yana dizilim için şart */
+    background-color: var(--bg-dark);
+    color: var(--text-white);
+    height: 100vh;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden; /* Sayfa taşmasını engeller */
+}
+
+/* --- SIDEBAR (SOL MENÜ) GENEL AYARLARI --- */
+aside {
+    width: 260px;
+    background-color: var(--bg-sidebar); /* Değişken adın neyse onu koru */
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,0.05);
+    flex-shrink: 0;
+    transition: width 0.3s ease;
+    position: relative;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+/* KAPALI DURUM (COLLAPSED) */
+aside.collapsed {
+    width: 70px;
+}
+
+/* Kapalıyken Metinleri Gizle (Logo, Linkler, Profil) */
+aside.collapsed .brand-text, 
+aside.collapsed nav ul li a span,
+aside.collapsed .user-profile .brand-text {
+    opacity: 0;
+    pointer-events: none;
+    display: none;
+}
+
+/* Kapalıyken Elemanları Ortala */
+aside.collapsed .brand { justify-content: center; padding: 0; }
+aside.collapsed nav ul li a { justify-content: center; padding: 15px 0; }
+aside.collapsed nav ul li a i { margin-right: 0; font-size: 1.2rem; }
+aside.collapsed .user-profile { justify-content: center; padding: 20px 0; }
+
+
+/* --- MARKA VE LOGO ALANI --- */
+.brand { 
+    height: 70px; /* Yüksekliği sabitledik */
+    padding-left: 25px; /* Sadece soldan boşluk */
+    display: flex;
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--active-orange); /* Senin değişkenin */
+    overflow: hidden;
+    transition: 0.3s;
+}
+
+/* Logo İkonu */
+.brand i {
+    min-width: 30px;
+    text-align: center;
+    font-size: 1.4rem;
+    margin-right: 10px;
+}
+
+
+/* --- AÇMA/KAPAMA BUTONU (TOGGLE) --- */
+.toggle-btn {
+    position: absolute;
+    top: 20px; /* Logoyla aynı hizaya getirdik */
+    right: 15px; /* Sağ kenara yasladık */
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--active-orange);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.3s;
+    z-index: 1001;
+}
+
+.toggle-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+/* --- KRİTİK DÜZELTME: Menü Kapalıyken Buton Konumu --- */
+aside.collapsed .toggle-btn {
+    top: 75px; /* Logonun hemen altına indir */
+    right: auto; /* Sağ hizalamayı iptal et */
+    left: 50%; /* Soldan %50 it */
+    transform: translateX(-50%) rotate(180deg); /* Tam ortaya çek ve oku çevir */
+}
+
+
+/* --- NAVİGASYON VE LİNKLER --- */
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li a {
+    display: flex;
+    align-items: center;
+    padding: 15px 25px;
+    color: var(--text-gray); /* Değişkenini kontrol et */
+    text-decoration: none !important;
+    transition: 0.3s;
+    height: 50px;
+    font-size: 0.95rem;
+}
+
+nav ul li a i {
+    margin-right: 15px;
+    min-width: 20px;
+    text-align: center;
+    transition: 0.3s;
+}
+
+nav ul li:hover a {
+    color: #fff;
+    background: rgba(255,255,255,0.02);
+}
+
+/* Aktif Sayfa Stili */
+nav ul li.active a {
+    background-color: var(--active-orange);
+    color: #1e130c !important;
+    font-weight: bold;
+    border-radius: 0 25px 25px 0; /* Turuncu kutu şekli */
+    margin-right: 20px;
+}
+
+/* Kapalıyken aktif linkin şeklini düzelt (Kutu olmasın) */
+aside.collapsed nav ul li.active a {
+    border-radius: 0;
+    margin-right: 0;
+}
+
+
+/* --- PROFİL ALANI --- */
+.user-profile {
+    margin-top: auto;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    overflow: hidden;
+}
+
+aside.collapsed .user-profile i {
+    margin-right: 0;
+    font-size: 1.5rem;
+}
+/* --- MAIN CONTENT (ANA İÇERİK) --- */
+/* BURASI DÜZELTİLDİ: Margin yerine Flex kullanıyoruz */
+main {
+    flex: 1; /* Kalan boşluğu otomatik doldur */
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 15px;
+    overflow-y: auto; /* İçerik taşarsa scroll çıksın */
+    transition: 0.3s; /* Sidebar kapanınca yumuşak genişlesin */
+}
+
+/* --- DİĞER KÜÇÜK AYARLAR --- */
+.user-profile {
+    margin-top: auto;
+    padding: 20px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
