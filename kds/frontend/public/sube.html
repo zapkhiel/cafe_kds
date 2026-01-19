@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Soulmate KDS - Şube Performansı</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #2b1b12; --bg-sidebar: #1e130c; --panel-bg: #3d2b1f;
+            --card-purple: #7d3cff; --card-green: #8cc63f; --active-orange: #ff9f43;
+            --text-white: #ffffff; --text-gray: #b3a296;
+        }
+        * { box-sizing: border-box; }
+        body { display: flex; margin: 0; height: 100vh; background-color: var(--bg-body); color: var(--text-white); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        
+                aside { width: 250px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; transition: width 0.3s ease; position: relative; white-space: nowrap; z-index: 1000; }
+        aside.collapsed { width: 70px; }
+        aside.collapsed .brand-text, aside.collapsed nav ul li a span, aside.collapsed .user-profile .brand-text { display: none; }
+        aside.collapsed .brand, aside.collapsed nav ul li a, aside.collapsed .user-profile { justify-content: center; }
+        aside.collapsed nav ul li a i { margin: 0; }
+        
+        .toggle-btn { background: rgba(255, 255, 255, 0.1); color: var(--active-orange); border: none; cursor: pointer; position: absolute; top: 25px; right: 10px; width: 25px; height: 25px; border-radius: 5px; display: flex; align-items: center; justify-content: center; transition: 0.3s; z-index: 10; }
+        aside.collapsed .toggle-btn { right: 50%; transform: translateX(50%) rotate(180deg); top: 85px; }
+        
+        .brand { padding: 25px; font-size: 1.2rem; font-weight: bold; color: white; display: flex; align-items: center; gap: 10px; height: 80px; }
+        nav { flex: 1; } nav ul { list-style: none; padding: 0; margin: 0; }
+        nav ul li a { display: flex; align-items: center; gap: 10px; padding: 15px 25px; color: var(--text-gray); text-decoration: none; transition: 0.3s; height: 50px; }
+        nav ul li.active a { background-color: var(--active-orange); color: #1e130c; font-weight: bold; border-radius: 0 25px 25px 0; margin-right: 20px; }
+        aside.collapsed nav ul li.active a { border-radius: 0; margin-right: 0; }
+        .user-profile { margin-top: auto; padding: 20px; display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+
+        main { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 15px; overflow-y: auto; }
+        header { display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 1.5rem; color: var(--active-orange); }
+
+        .dashboard-container { display: grid; grid-template-columns: 260px 1.5fr 1fr; gap: 20px; height: 100%; overflow: hidden; padding-bottom: 10px; }
+        
+                .left-panel { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 5px; }
+        .filter-card { background-color: var(--panel-bg); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .filter-header { display: flex; justify-content: space-between; color: var(--text-white); font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+        .branch-list { max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .radio-item { display: flex; align-items: center; cursor: pointer; color: #ccc; font-size: 0.9rem; }
+        .radio-item input { margin-right: 10px; accent-color: var(--active-orange); transform: scale(1.1); }
+        .year-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .year-btn { background: #dcdcdc; border: none; color: #333; padding: 8px 0; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .year-btn.active { background-color: var(--active-orange); color: #1e130c; }
+        
+                .center-panel { display: grid; grid-template-rows: 1.2fr 1fr; gap: 15px; height: 100%; overflow: hidden; }
+        .chart-card { border-radius: 16px; padding: 15px; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .bg-purple { background-color: var(--card-purple); color: white; }
+        .card-tag { background: #3e2a2a; color: #f1c40f; padding: 5px 15px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; align-self: flex-start; margin-bottom: 10px; }
+        .chart-wrapper { flex: 1; position: relative; min-height: 0; width: 100%; }
+
+                .right-panel { display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; padding-right: 5px; }
+        .header-tag { background: #8cc63f; color: #1e130c; padding: 12px; border-radius: 12px; font-weight: bold; text-align: center; }
+        .metric-card { padding: 15px; border-radius: 16px; color: white; display: flex; flex-direction: column; justify-content: center; min-height: 80px; }
+        .mc-purple { background-color: #7d3cff; } .mc-orange { background-color: #ff9f43; } .mc-teal { background-color: #00b894; }
+        .mc-label { font-size: 0.75rem; opacity: 0.9; margin-bottom: 3px; } .mc-val { font-size: 1.6rem; font-weight: bold; }
+
+        .sim-card { background-color: #2c3e50; border-radius: 16px; padding: 15px; color: white; border: 2px dashed #f1c40f; margin-top: 5px; }
+        .sim-title { font-weight: bold; color: #f1c40f; margin-bottom: 10px; }
+        .sim-select { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px; border-radius: 5px; width: 100%; margin-bottom: 10px; }
+        .sim-row { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px; }
+        .sim-btn { width: 100%; background: #f1c40f; color: #1e130c; border: none; padding: 8px; margin-top: 10px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+
+        .bg-green { background-color: var(--card-green); color: #1e130c; }
+        canvas { width: 100% !important; height: 100% !important; }
+    </style>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <button class="toggle-btn" id="sidebarToggle"><i class="fas fa-chevron-left"></i></button>
+        <div class="brand"><i class="fas fa-coffee"></i> <span class="brand-text">Soulmate KDS</span></div>
+        <nav>
+            <ul>
+                <li><a href="genel.html"><i class="fas fa-th-large"></i> <span>Genel Bakış</span></a></li>
+                <li class="active"><a href="sube.html"><i class="fas fa-chart-line"></i> <span>Şube Performansı</span></a></li>
+                <li><a href="yeni_sube.html"><i class="fas fa-map-marker-alt"></i> <span>Yeni Şube Analizi</span></a></li>
+                <li><a href="urun.html"><i class="fas fa-utensils"></i> <span>Ürün Analizi</span></a></li>
+                <li><a href="tedarikciler.html"><i class="fas fa-truck"></i> <span>Tedarikçiler</span></a></li>
+            </ul>
+        </nav>
+        <div class="user-profile">
+            <i class="fas fa-user-circle" style="font-size: 1.5rem; color: #f38d1d;"></i>
+            <div class="brand-text" style="font-size: 0.8rem;"><div>Yönetici</div><div style="color: #666; font-size: 0.7rem;">admin@soulmate.com</div></div>
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <div><h1>Şube Performansı</h1><p>20 Aralık 2025 Cumartesi</p></div>
+            <div class="header-icons"><i class="far fa-bell"></i> <i class="fas fa-cog"></i></div>
+        </header>
+
+        <div class="dashboard-container">
+            
+            <div class="left-panel">
+                <div class="filter-card">
+                    <div class="filter-header">Şube Seçimi <i class="fas fa-caret-down"></i></div>
+                    <div class="branch-list" id="subeListesiContainer">
+                        <p style="color:gray; font-size:12px;">Yükleniyor...</p>
+                    </div>
+                </div>
+
+                <div class="filter-card">
+                    <div class="filter-header">Yıl</div>
+                    <div class="year-grid" id="yearButtonsContainer"></div>
+                </div>
+
+                <div class="filter-card" style="flex: 1; display:flex; flex-direction:column;">
+                    <div class="trend-box">
+                        <div class="trend-label">Trend Analizi</div>
+                        <div class="trend-val"><i class="fas fa-arrow-up"></i> %182.6</div>
+                        <div style="font-size: 0.7rem; color:#888;">Geçen yıla göre</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="center-panel">
+                <div class="chart-card bg-purple">
+                    <div class="card-tag">PERFORMANS TRENDİ</div>
+                    <div class="chart-wrapper">
+                        <canvas id="performansChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card bg-purple">
+                    <div class="card-tag">ŞUBE DURUM DAĞILIMI (KARLI/ZARARLI)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="durumChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="header-tag">KRİTİK METRİKLER</div>
+
+                <div class="metric-card mc-purple">
+                    <div class="mc-label">Toplam Ciro</div>
+                    <div class="mc-val" id="kpiToplamCiro">Yükleniyor...</div>
+                </div>
+                <div class="metric-card mc-orange">
+                    <div class="mc-label">Ortalama Ciro</div>
+                    <div class="mc-val" id="kpiOrtalamaCiro">Yükleniyor...</div>
+                </div>
+                <div class="metric-card mc-teal">
+                    <div class="mc-label">Net Kâr</div>
+                    <div class="mc-val" id="kpiNetKar">Yükleniyor...</div>
+                </div>
+                
+              <div class="sim-card">
+    <div class="sim-title" style="border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; margin-bottom:15px;">
+        <i class="fas fa-chess-knight"></i> KDS Fizibilite Motoru v2.0
+    </div>
+    
+   <div class="sim-group">
+    <label>Lokasyon Adı:</label>
+    <input type="text" id="simAd" class="sim-input" placeholder="Örn: İstinye Park AVM" onkeyup="autoDetectProfile()">
+    
+    <div id="detectedProfile" style="font-size: 0.7rem; color: #2ecc71; margin-top: 3px; font-style: italic; min-height: 15px;"></div>
+</div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div class="sim-group">
+            <label>Alan (m²):</label>
+            <input type="number" id="simM2" class="sim-input" value="80" onchange="autoCalculateCap()">
+        </div>
+        <div class="sim-group">
+            <label>Kira (₺):</label>
+            <input type="number" id="simKira" class="sim-input" value="75000">
+        </div>
+    </div>
+
+    <div class="sim-group">
+        <label style="display:flex; justify-content:space-between;">
+            <span>Personel Sayısı:</span>
+            <span id="valPersonel" style="color:#f1c40f;">4 Kişi</span>
+        </label>
+        <input type="range" id="simPersonel" min="2" max="15" value="4" class="sim-slider" oninput="updateSliderLabels()">
+    </div>
+
+    <div class="sim-group">
+        <label style="display:flex; justify-content:space-between;">
+            <span>Günlük Tahmini Müşteri:</span>
+            <span id="valMusteri" style="color:#2ecc71;">350 Kişi</span>
+        </label>
+        <input type="range" id="simMusteri" min="100" max="1000" step="10" value="350" class="sim-slider" oninput="updateSliderLabels()">
+    </div>
+
+    <div class="sim-result-box">
+        <div class="sr-row"><span>Tahmini Ciro:</span> <strong id="resCiro" class="text-green">...</strong></div>
+        <div class="sr-row"><span>Top. Gider:</span> <strong id="resGider" class="text-red">...</strong></div>
+        <div class="sr-row" style="border-top:1px dashed #555; padding-top:5px; margin-top:5px;">
+            <span>Net Kâr:</span> <strong id="resKar" class="text-gold" style="font-size:1.1rem;">...</strong>
+        </div>
+        <div class="sr-row"><span>ROI (Geri Dönüş):</span> <strong id="resROI">...</strong></div>
+    </div>
+
+    <button class="sim-btn" onclick="runSimulation()">SİMÜLASYONU BAŞLAT & KIYASLA</button>
+</div>
+
+<style>
+    .sim-group { margin-bottom: 10px; }
+    .sim-group label { display: block; font-size: 0.75rem; color: #bbb; margin-bottom: 4px; }
+    .sim-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid #555; color: white; padding: 6px; border-radius: 4px; }
+    .sim-slider { width: 100%; accent-color: #f1c40f; cursor: pointer; }
+    .sim-result-box { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin: 15px 0; border-left: 3px solid #f1c40f; }
+    .sr-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 3px; }
+    .text-green { color: #2ecc71; } .text-red { color: #e74c3c; } .text-gold { color: #f1c40f; }
+</style>
+
+                <div class="chart-card bg-green" style="min-height: 250px;">
+                    <div class="card-tag">ŞUBE KARLILIK SIRALAMASI</div>
+                    <div class="chart-wrapper">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+   <script>
+    // --- GLOBAL DEĞİŞKENLER ---
+    let performansChartInstance = null;
+    let durumChartInstance = null;
+    let barChartInstance = null;
+    let seciliYil = 'all';
+
+    // --- SAYFA YÜKLENDİĞİNDE ÇALIŞACAK FONKSİYONLAR ---
+    document.addEventListener('DOMContentLoaded', () => {
+        setupSidebar();      // 1. Sidebar'ı kur
+        subeleriGetir();     // 2. Şubeleri çek
+        yillariGetir();      // 3. Yılları çek
+        verileriGuncelle();  // 4. Grafikleri doldur
+        
+        // Simülasyon varsayılanlarını tetikle
+        updateSliderLabels();
+    });
+
+    // --- 1. SIDEBAR AYARLARI ---
+    function setupSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const icon = toggleBtn.querySelector('i');
+        
+        if(localStorage.getItem('sidebarState') === 'collapsed') { 
+            sidebar.classList.add('collapsed'); 
+            icon.classList.remove('fa-chevron-left'); 
+            icon.classList.add('fa-chevron-right'); 
+        }
+        
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            if(sidebar.classList.contains('collapsed')) { 
+                icon.classList.remove('fa-chevron-left'); 
+                icon.classList.add('fa-chevron-right'); 
+                localStorage.setItem('sidebarState', 'collapsed'); 
+            } else { 
+                icon.classList.remove('fa-chevron-right'); 
+                icon.classList.add('fa-chevron-left'); 
+                localStorage.setItem('sidebarState', 'expanded'); 
+            }
+            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 300);
+        });
+    }
+
+    // --- 2. VERİ ÇEKME FONKSİYONLARI ---
+    async function subeleriGetir() {
+        try {
+            const res = await fetch('/api/subeler');
+            const data = await res.json();
+            const container = document.getElementById('subeListesiContainer');
+            
+            let html = `<label class="radio-item"><input type="radio" name="sube" value="all" checked onchange="verileriGuncelle()"> <span>Tüm Şubeler</span></label>`;
+            data.forEach(s => {
+                html += `<label class="radio-item"><input type="radio" name="sube" value="${s.sube_id}" onchange="verileriGuncelle()"> <span>${s.sube_adi}</span></label>`;
+            });
+            container.innerHTML = html;
+        } catch(e) { console.error("Şube hatası:", e); }
+    }
+
+    async function yillariGetir() {
+        try {
+            const res = await fetch('/api/mevcut-yillar');
+            const data = await res.json();
+            const container = document.getElementById('yearButtonsContainer');
+            
+            let html = `<button class="year-btn active" onclick="yilSec(this, 'all')">Tümü</button>`;
+            data.forEach(y => {
+                html += `<button class="year-btn" onclick="yilSec(this, '${y.yil}')">${y.yil}</button>`;
+            });
+            container.innerHTML = html;
+        } catch(e) { console.error("Yıl hatası:", e); }
+    }
+
+    function yilSec(btn, yil) {
+        document.querySelectorAll('.year-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        seciliYil = yil;
+        verileriGuncelle();
+    }
+
+    async function verileriGuncelle() {
+        const sube = document.querySelector('input[name="sube"]:checked')?.value || 'all';
+        
+        try {
+            const res = await fetch(`/api/sube-performans?yil=${seciliYil}&sube_id=${sube}`);
+            const data = await res.json();
+
+            // KPI Güncelle (NaN hatası korumalı)
+            formatKpi('kpiToplamCiro', data.kpi.toplamCiro || 0);
+            formatKpi('kpiNetKar', data.kpi.toplamKar || 0);
+            
+            // Ortalama Ciro Hesabı
+            const ortalama = data.trend.length > 0 ? (data.kpi.toplamCiro / data.trend.length) : 0;
+            formatKpi('kpiOrtalamaCiro', ortalama);
+
+            // Grafikleri Güncelle
+            updatePerformansChart(data.trend);
+            updateDurumChart(data.siralamalar);
+            updateBarChart(data.siralamalar);
+
+        } catch (err) { console.error("Veri güncelleme hatası:", err); }
+    }
+
+    function formatKpi(id, val) {
+        document.getElementById(id).innerText = '₺' + (val / 1000).toFixed(0) + 'K';
+    }
+
+    // --- 3. GRAFİK OLUŞTURUCULAR ---
+
+    // A) TREND GRAFİĞİ (Gelecek Tahminli)
+    
+// --- GELECEK TAHMİNLİ GRAFİK MOTORU (GEÇMİŞ YIL KORUMALI) ---
+function updatePerformansChart(data) {
+    const ctx = document.getElementById('performansChart').getContext('2d');
+    if (performansChartInstance) performansChartInstance.destroy();
+
+    // 1. MEVCUT VERİLERİ HAZIRLA
+    let labels = data.map(d => d.donem_ay_yil);
+    let ciroData = data.map(d => parseFloat(d.ciro));
+    let giderData = data.map(d => parseFloat(d.gider));
+    let karData = data.map(d => parseFloat(d.kar));
+
+    // Gerçek verinin bittiği nokta
+    const gercekVeriSiniri = labels.length - 1; 
+
+    // 2. KDS TAHMİN ALGORİTMASI
+    // DÜZELTME: Sadece 'all' veya '2025' (Güncel Yıl) seçiliyse tahmin yap.
+    // Geçmiş yıllar (2023, 2022 vb.) için tahmin yapılmaz, çünkü o yıllar bitti.
+    
+    // Not: Sistem tarihini 2025 varsaydığımız için '2025' kontrolü ekledik.
+    if (seciliYil === 'all' || seciliYil == '2025') {
+        
+        const son3AyOrtalama = (arr) => {
+            const len = arr.length;
+            if (len < 3) return arr[len - 1] || 0;
+            return (arr[len - 1] + arr[len - 2] + arr[len - 3]) / 3;
+        };
+
+        let sonCiro = son3AyOrtalama(ciroData);
+        let sonGider = son3AyOrtalama(giderData);
+        
+        // Son tarihten itibaren tahmin üretmeye başla
+        let sonTarih = new Date(labels[labels.length - 1] || new Date());
+
+        for (let i = 1; i <= 4; i++) {
+            sonTarih.setMonth(sonTarih.getMonth() + 1);
+            const yeniTarihStr = sonTarih.toISOString().slice(0, 7);
+            labels.push(yeniTarihStr + ' (Tahmin)');
+
+            sonCiro = sonCiro * 1.05; // %5 Büyüme Hedefi
+            sonGider = sonGider * 1.04; // %4 Enflasyon
+            const sonKar = sonCiro - sonGider;
+
+            ciroData.push(sonCiro);
+            giderData.push(sonGider);
+            karData.push(sonKar);
+        }
+    }
+
+    // 3. GRAFİĞİ ÇİZ
+    performansChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { 
+                    label: 'Ciro', data: ciroData, 
+                    borderColor: '#f1c40f', backgroundColor: '#f1c40f', borderWidth: 2, pointRadius: 3,
+                    segment: { 
+                        // Sadece gerçek veri sınırından sonrasını kesikli yap
+                        borderDash: ctx => ctx.p0DataIndex >= gercekVeriSiniri ? [6, 6] : undefined, 
+                        borderColor: ctx => ctx.p0DataIndex >= gercekVeriSiniri ? 'rgba(241, 196, 15, 0.5)' : '#f1c40f' 
+                    }
+                },
+                { 
+                    label: 'Gider', data: giderData, 
+                    borderColor: '#e74c3c', backgroundColor: '#e74c3c', borderWidth: 2, pointRadius: 3,
+                    segment: { 
+                        borderDash: ctx => ctx.p0DataIndex >= gercekVeriSiniri ? [6, 6] : undefined, 
+                        borderColor: ctx => ctx.p0DataIndex >= gercekVeriSiniri ? 'rgba(231, 76, 60, 0.5)' : '#e74c3c' 
+                    }
+                },
+                { 
+                    label: 'Net Kâr', data: karData, 
+                    borderColor: '#2ecc71', backgroundColor: '#2ecc71', borderWidth: 2, pointRadius: 3, 
+                    segment: { 
+                        // Net kar normalde de biraz kesikli olabilir ama tahmin kısmı daha silik olsun
+                        borderDash: ctx => ctx.p0DataIndex >= gercekVeriSiniri ? [2, 10] : [5, 5], 
+                        borderColor: ctx => ctx.p0DataIndex >= gercekVeriSiniri ? 'rgba(46, 204, 113, 0.5)' : '#2ecc71' 
+                    }
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { 
+                legend: { position: 'bottom', labels: { color: 'white', usePointStyle: true } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            label += new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumSignificantDigits: 3 }).format(context.parsed.y);
+                            
+                            // İPUCU: Eğer tahmin verisiyse kullanıcıya söyle
+                            if (context.dataIndex > gercekVeriSiniri) label += " (Tahmini)";
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: { 
+                x: { ticks: { color: '#ccc' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#ccc', callback: v => v/1000 + 'K' }, grid: { color: 'rgba(255,255,255,0.05)' } } 
+            }
+        }
+    });
+}
+
+    // B) PASTA GRAFİĞİ (Düzeltildi)
+    function updateDurumChart(siralamalar) {
+        let karli = 0, zararli = 0;
+        siralamalar.forEach(s => {
+            // İsimlendirme hatalarına karşı koruma
+            const val = parseFloat(s.kar || s.toplam_kar || s.net_kar || 0);
+            val < 0 ? zararli++ : karli++;
+        });
+
+        const ctx = document.getElementById('durumChart');
+        if(durumChartInstance) durumChartInstance.destroy();
+
+        durumChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Kârlı Şubeler', 'Riskli/Zararlı Şubeler'],
+                datasets: [{ 
+                    data: [karli, zararli], 
+                    backgroundColor: ['#2ecc71', '#e74c3c'], 
+                    borderWidth: 0 
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                plugins: { legend: { position: 'bottom', labels: { color: 'white', usePointStyle: true } } }
+            }
+        });
+    }
+
+    // C) BAR GRAFİĞİ (Kâr Sıralaması - Düzeltildi)
+    // C) BAR GRAFİĞİ (GÖRÜNÜRLÜK DÜZELTİLDİ)
+    function updateBarChart(siralamalar) {
+        const canvas = document.getElementById('barChart');
+        if (!canvas) return;
+
+        if (barChartInstance) barChartInstance.destroy();
+
+        if (!siralamalar || siralamalar.length === 0) return;
+
+        // Veriyi kâra göre sırala ve ilk 10'u al
+        const sirali = [...siralamalar].sort((a, b) => 
+            parseFloat(b.kar || b.toplam_kar || 0) - parseFloat(a.kar || a.toplam_kar || 0)
+        ).slice(0, 10);
+
+        barChartInstance = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: sirali.map(s => s.sube_adi.replace(' Şubesi','').substring(0, 15)),
+                datasets: [{
+                    label: 'Net Kâr',
+                    data: sirali.map(s => parseFloat(s.kar || s.toplam_kar || 0)),
+                    // DÜZELTME BURADA: Pozitif ise KOYU RENK (#1e130c), Negatif ise KIRMIZI (#e74c3c)
+                    // Arka plan yeşil olduğu için yeşil çubuk kullanmıyoruz!
+                    backgroundColor: sirali.map(s => parseFloat(s.kar || s.toplam_kar || 0) < 0 ? '#e74c3c' : '#1e130c'),
+                    borderRadius: 4,
+                    barPercentage: 0.6 // Çubukları biraz incelttik, daha zarif dursun
+                }]
+            },
+            options: {
+                indexAxis: 'y', // Yatay bar
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { 
+                    x: { 
+                        ticks: { color: '#1e130c' }, // Yazılar koyu olsun, yeşil üzerinde okunsun
+                        grid: { color: 'rgba(0,0,0,0.1)' } 
+                    },
+                    y: { 
+                        ticks: { color: '#1e130c', font: { size: 11, weight:'bold' } },
+                        grid: { display: false } 
+                    } 
+                }
+            }
+        });
+    }
+    // --- 4. KDS FİZİBİLİTE MOTORU v2.0 ---
+
+    const ORTALAMA_SEPET = 145;      
+    const PERSONEL_MALIYETI = 38000; 
+    const ENERJI_M2_BASI = 400;      
+    const COGS_ORANI = 0.32;         
+
+    function updateSliderLabels() {
+        const pers = document.getElementById('simPersonel');
+        const must = document.getElementById('simMusteri');
+        if(pers) document.getElementById('valPersonel').innerText = pers.value + " Kişi";
+        if(must) document.getElementById('valMusteri').innerText = must.value + " Kişi";
+    }
+
+    function autoCalculateCap() {
+        const m2 = parseFloat(document.getElementById('simM2').value);
+        if(m2 > 0) { /* Otomatik mantık buraya eklenebilir */ }
+    }
+
+    // AKILLI PROFİL ALGILAMA
+    function autoDetectProfile() {
+        const input = document.getElementById('simAd');
+        if(!input) return;
+        
+        const text = input.value.toLowerCase();
+        const profileEl = document.getElementById('detectedProfile');
+        
+        const inputKira = document.getElementById('simKira');
+        const inputM2 = document.getElementById('simM2');
+        const sliderMusteri = document.getElementById('simMusteri');
+        const sliderPersonel = document.getElementById('simPersonel');
+
+        if (text.includes('avm') || text.includes('park') || text.includes('mall')) {
+            profileEl.innerText = "Algılandı: AVM Profili";
+            inputKira.value = 120000; inputM2.value = 120; sliderMusteri.value = 600; sliderPersonel.value = 8;
+        }
+        else if (text.includes('kampüs') || text.includes('üniversite') || text.includes('okul')) {
+            profileEl.innerText = "Algılandı: Öğrenci Profili";
+            inputKira.value = 40000; inputM2.value = 70; sliderMusteri.value = 850; sliderPersonel.value = 6;
+        }
+        else if (text.includes('havalimanı')) {
+            profileEl.innerText = "Algılandı: Havalimanı";
+            inputKira.value = 350000; inputM2.value = 40; sliderMusteri.value = 1200; sliderPersonel.value = 12;
+        }
+        else { profileEl.innerText = ""; }
+
+        updateSliderLabels();
+    }
+
+    // SİMÜLASYONU BAŞLAT
+    function runSimulation() {
+        const ad = document.getElementById('simAd').value || 'Yeni Senaryo';
+        const m2 = parseFloat(document.getElementById('simM2').value) || 0;
+        const kira = parseFloat(document.getElementById('simKira').value) || 0;
+        const personelSayisi = parseInt(document.getElementById('simPersonel').value);
+        const gunlukMusteri = parseInt(document.getElementById('simMusteri').value);
+
+        const aylikCiro = gunlukMusteri * ORTALAMA_SEPET * 30;
+        const toplamGider = kira + (aylikCiro * COGS_ORANI) + (personelSayisi * PERSONEL_MALIYETI) + (m2 * ENERJI_M2_BASI) + (aylikCiro * 0.03);
+        const netKar = aylikCiro - toplamGider;
+
+        const ilkYatirim = m2 * 15000;
+        const roiAy = netKar > 0 ? (ilkYatirim / netKar).toFixed(1) : "Asla";
+
+        // Ekrana Bas
+        document.getElementById('resCiro').innerText = '₺' + (aylikCiro/1000).toFixed(1) + 'K';
+        document.getElementById('resGider').innerText = '₺' + (toplamGider/1000).toFixed(1) + 'K';
+        
+        const karEl = document.getElementById('resKar');
+        karEl.innerText = '₺' + (netKar/1000).toFixed(1) + 'K';
+        karEl.className = netKar > 0 ? 'text-gold' : 'text-red';
+
+        const roiEl = document.getElementById('resROI');
+        roiEl.innerText = netKar > 0 ? roiAy + " Ay" : "Zarar";
+        roiEl.style.color = netKar > 0 && roiAy < 24 ? '#2ecc71' : '#e74c3c';
+
+        // Grafiğe Ekle (Bar Grafiği Varsa)
+        if (barChartInstance) {
+            addToBarChart(ad, netKar);
+        } else {
+            console.warn("Grafik hazır olmadığı için simülasyon eklenemedi.");
+        }
+        
+        showDecisionSupport(netKar, roiAy, kira, aylikCiro);
+    }
+
+    function addToBarChart(ad, kar) {
+        const labels = barChartInstance.data.labels;
+        const dataset = barChartInstance.data.datasets[0];
+
+        const existIdx = labels.findIndex(l => l.includes('(Sim)'));
+        if (existIdx > -1) {
+            labels.splice(existIdx, 1);
+            dataset.data.splice(existIdx, 1);
+            dataset.backgroundColor.splice(existIdx, 1);
+        }
+
+        labels.unshift(ad + ' (Sim)');
+        dataset.data.unshift(kar);
+        
+        if (!Array.isArray(dataset.backgroundColor)) {
+            dataset.backgroundColor = new Array(labels.length-1).fill(dataset.backgroundColor);
+        }
+        dataset.backgroundColor.unshift(kar > 0 ? '#ffffff' : '#e74c3c');
+        
+        barChartInstance.update();
+    }
+
+    function showDecisionSupport(kar, roi, kira, ciro) {
+        const kiraOrani = (kira / ciro) * 100;
+        let mesaj = "";
+        if (kar < 0) {
+            mesaj = `🚨 RİSKLİ: Aylık ₺${Math.abs(kar/1000).toFixed(1)}K zarar! Kira oranı: %${kiraOrani.toFixed(0)}.`;
+        } else {
+            mesaj = `✅ ONAY: Yatırım kendini ${roi} ayda amorti ediyor. Kira oranı: %${kiraOrani.toFixed(1)}.`;
+        }
+        alert(mesaj);
+    }
+</script>
+</body>
+</html>

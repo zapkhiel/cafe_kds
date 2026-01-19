@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Soulmate KDS - Yeni Şube Analizi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #2b1b12; --bg-sidebar: #1e130c; --panel-bg: #3d2b1f;
+            --card-purple: #7d3cff; --card-green: #8cc63f; --active-orange: #ff9f43;
+            --text-white: #ffffff; --text-gray: #b3a296;
+        }
+
+        * { box-sizing: border-box; }
+        body { display: flex; margin: 0; height: 100vh; background-color: var(--bg-body); color: var(--text-white); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+                aside { width: 250px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; transition: width 0.3s ease; position: relative; white-space: nowrap; z-index: 1000; }
+        aside.collapsed { width: 70px; }
+        aside.collapsed .brand-text, aside.collapsed nav ul li a span, aside.collapsed .user-profile .brand-text { opacity: 0; pointer-events: none; display: none; }
+        aside.collapsed .brand, aside.collapsed nav ul li a, aside.collapsed .user-profile { justify-content: center; }
+        
+        .toggle-btn { background: rgba(255, 255, 255, 0.1); color: var(--active-orange); border: none; cursor: pointer; position: absolute; top: 25px; right: 10px; width: 25px; height: 25px; border-radius: 5px; display: flex; align-items: center; justify-content: center; transition: 0.3s; z-index: 10; }
+        aside.collapsed .toggle-btn { right: 50%; transform: translateX(50%) rotate(180deg); top: 85px; }
+
+        .brand { padding: 25px; font-size: 1.2rem; font-weight: bold; color: white; display: flex; align-items: center; gap: 10px; height: 80px; }
+        nav { flex: 1; } nav ul { list-style: none; padding: 0; margin: 0; }
+        nav ul li a { display: flex; align-items: center; gap: 10px; padding: 15px 25px; color: var(--text-gray); text-decoration: none; transition: 0.3s; height: 50px; }
+        nav ul li.active a { background-color: var(--active-orange); color: #1e130c; font-weight: bold; border-radius: 0 25px 25px 0; margin-right: 20px; }
+        aside.collapsed nav ul li.active a { border-radius: 0; margin-right: 0; }
+        .user-profile { margin-top: auto; padding: 20px; display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+
+                main { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 15px; overflow-y: auto; transition: 0.3s; }
+        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 5px; flex-shrink: 0; }
+        header h1 { margin: 0; font-size: 1.5rem; color: var(--active-orange); }
+
+                .dashboard-container { display: grid; grid-template-columns: 280px 1fr 300px; gap: 20px; height: 100%; overflow: hidden; }
+
+                .left-panel { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 5px; }
+        .filter-card { background-color: var(--panel-bg); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+        .filter-header { color: var(--active-orange); font-weight: bold; margin-bottom: 15px; font-size: 0.95rem; }
+        
+        .radio-list { max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .radio-item { display: flex; align-items: center; cursor: pointer; color: #ddd; font-size: 0.9rem; }
+        .radio-item input { margin-right: 10px; accent-color: var(--active-orange); transform: scale(1.1); }
+        .radio-item:hover { color: white; }
+
+        .range-container { margin-bottom: 15px; }
+        .range-label { display: flex; justify-content: space-between; font-size: 0.85rem; color: #ccc; margin-bottom: 5px; }
+        input[type=range] { width: 100%; accent-color: var(--active-orange); cursor: pointer; }
+
+        .gold-card { background-color: #f1c40f; color: #2b1b12; border-radius: 12px; padding: 20px; font-weight: bold; }
+        .gold-title { display: flex; align-items: center; gap: 8px; font-size: 1rem; margin-bottom: 10px; }
+        .top-list { list-style: none; padding: 0; margin: 0; }
+        .top-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding: 5px 0; }
+
+                .center-panel { display: grid; grid-template-rows: 2fr 1fr; gap: 15px; height: 100%; overflow: hidden; }         .map-card { background-color: var(--card-purple); border-radius: 16px; padding: 5px; display: flex; flex-direction: column; position: relative; }
+        
+                .map-controls { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 5px; }
+        .map-legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: white; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        #map { width: 100%; height: 100%; border-radius: 12px; background: #222; }
+
+        .chart-card { background-color: var(--panel-bg); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.05); }
+        .chart-header { color: white; font-weight: bold; font-size: 0.9rem; margin-bottom: 15px; text-transform: uppercase; }
+
+                .right-panel { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .metric-card { padding: 20px; border-radius: 12px; color: white; display: flex; flex-direction: column; justify-content: center; }
+        .bg-green-bright { background-color: #8cc63f; color: #1e130c; }
+        .bg-purple-box { background-color: #7d3cff; }
+        .bg-teal { background-color: #00b894; }
+        .bg-yellow { background-color: #f1c40f; color: #1e130c; }
+        .metric-label { font-size: 0.85rem; margin-bottom: 5px; opacity: 0.9; }
+        .metric-val { font-size: 1.8rem; font-weight: bold; margin: 0; }
+        .roi-chart-box { background-color: #8cc63f; border-radius: 16px; padding: 15px; flex: 1; display: flex; flex-direction: column; }
+        .summary-box { background: white; color: #333; padding: 15px; border-radius: 12px; font-size: 0.8rem; line-height: 1.4; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #5d4037; border-radius: 3px; }
+        canvas { width: 100% !important; height: 100% !important; }
+        .chart-wrapper { flex: 1; position: relative; min-height: 0; }
+
+                .poi-icon {
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; color: white; font-size: 14px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            border: 2px solid white;
+        }
+
+    </style>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <button class="toggle-btn" id="sidebarToggle"><i class="fas fa-chevron-left"></i></button>
+        <div class="brand"><i class="fas fa-coffee"></i> <span class="brand-text">Soulmate KDS</span></div>
+        <nav>
+            <ul>
+                <li><a href="genel.html"><i class="fas fa-th-large"></i> <span>Genel Bakış</span></a></li>
+                <li><a href="sube.html"><i class="fas fa-chart-line"></i> <span>Şube Performansı</span></a></li>
+                <li class="active"><a href="yeni_sube.html"><i class="fas fa-map-marker-alt"></i> <span>Yeni Şube Analizi</span></a></li>
+                <li><a href="urun.html"><i class="fas fa-utensils"></i> <span>Ürün Analizi</span></a></li>
+                <li><a href="tedarikciler.html"><i class="fas fa-truck"></i> <span>Tedarikçiler</span></a></li>
+            </ul>
+        </nav>
+        <div class="user-profile">
+            <i class="fas fa-user-circle" style="font-size: 1.5rem; color: #f38d1d;"></i>
+            <div class="brand-text" style="font-size: 0.8rem;"><div>Yönetici</div><div style="color: #666; font-size: 0.7rem;">admin@soulmate.com</div></div>
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <div>
+                <h1>Yeni Şube Analizi</h1>
+                <p>20 Aralık 2025 Cumartesi</p>
+            </div>
+            <div style="font-size: 1.2rem; cursor: pointer;">
+                <i class="far fa-bell"></i> &nbsp; <i class="fas fa-cog"></i>
+            </div>
+        </header>
+
+        <div class="dashboard-container">
+            
+            <div class="left-panel">
+                <div class="filter-card">
+                    <div class="filter-header">Lokasyon Seçimi</div>
+                    <div class="radio-list" id="locationList">
+                        <p style="color:#888; font-size:12px;">Yükleniyor...</p>
+                    </div>
+                </div>
+
+                <div class="filter-card">
+                    <div class="filter-header">Filtreler</div>
+                    <div class="range-container">
+                        <div class="range-label"><span>Min. Potansiyel Skor</span> <span id="scoreVal">0</span></div>
+                        <input type="range" id="skorRange" min="0" max="100" value="0" oninput="updateFilters()">
+                    </div>
+                    <div class="range-container">
+                        <div class="range-label"><span>Maks. Kira</span> <span id="rentVal">₺100.000</span></div>
+                        <input type="range" id="kiraRange" min="10000" max="100000" step="1000" value="100000" oninput="updateFilters()">
+                    </div>
+                </div>
+
+                <div class="gold-card">
+                    <div class="gold-title"><i class="fas fa-trophy"></i> Top 3 Lokasyon</div>
+                    <ul class="top-list" id="topList"></ul>
+                </div>
+            </div>
+
+            <div class="center-panel">
+                <div class="map-card">
+                    <div id="map"></div>
+                    
+                    <div class="map-controls">
+                        <div style="font-weight:bold; color:var(--active-orange); margin-bottom:5px; font-size:0.8rem;">ÇEVRE ANALİZİ</div>
+                        <div class="map-legend-item">
+                            <span class="dot" style="background:#ff4757;"></span> <span>Rakipler (Kahve)</span>
+                        </div>
+                        <div class="map-legend-item">
+                            <span class="dot" style="background:#2ed573;"></span> <span>Okul/Kampüs</span>
+                        </div>
+                        <div class="map-legend-item">
+                            <span class="dot" style="background:#a55eea;"></span> <span>AVM/İş Merkezi</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">YATIRIM MALİYET DAĞILIMI</div>
+                    <div class="chart-wrapper">
+                        <canvas id="costChart"></canvas>
+                    </div>
+                    <div style="text-align: center; margin-top: 10px; font-weight: bold; font-size: 1.1rem; color: #f1c40f;" id="totalYatirim">
+                        Toplam Yatırım: ₺0
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="metric-card bg-green-bright">
+                    <div class="chart-header" style="color: #1e130c; margin:0;">FİNANSAL ÖNGÖRÜLER</div>
+                </div>
+
+                <div class="metric-card bg-purple-box">
+                    <div class="metric-label">Tahmini Ciro (Aylık)</div>
+                    <div class="metric-val" id="tahminiCiro">...</div>
+                </div>
+
+                <div class="metric-card bg-teal">
+                    <div class="metric-label">Tahmini Net Kâr</div>
+                    <div class="metric-val" id="tahminiKar">...</div>
+                </div>
+
+               <div class="metric-card bg-yellow">
+    <div class="metric-label">ROI (Geri Dönüş)</div>
+    <div class="metric-val" id="roiVal">...</div>
+    <div id="roiVerdict" style="font-size: 0.8rem; margin-top: 5px; font-weight:bold; color:#2b1b12;">
+        ...
+    </div>
+</div>
+
+                <div class="roi-chart-box">
+                    <div class="chart-header" style="color: #1e130c;">LOKASYON ROI KARŞILAŞTIRMASI</div>
+                    <div class="chart-wrapper">
+                        <canvas id="roiChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <strong><i class="fas fa-info-circle"></i> Bilgi:</strong><br>
+                    Harita üzerindeki POI (İlgi Çekici Nokta) verileri, lokasyonun 500m çapındaki potansiyelini simüle etmektedir.
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+   <script>
+    // --- 1. GLOBAL DEĞİŞKENLER (Her birinden sadece bir tane olmalı) ---
+    let map;
+    let markers = [];
+    let poiMarkers = [];
+    let allLocations = [];
+    let costChart = null;
+    let roiChart = null;
+
+    // --- 2. SAYFA YÜKLENDİĞİNDE BAŞLAT ---
+    document.addEventListener('DOMContentLoaded', () => {
+        setupSidebar();
+        initMap();
+        fetchData(); 
+    });
+
+    // --- 3. HARİTA KURULUMU ---
+    function initMap() {
+        if (map) return;
+        map = L.map('map').setView([39.9334, 32.8597], 6); // Türkiye merkezi
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 19
+        }).addTo(map);
+    }
+
+    // --- 4. VERİ ÇEKME VE FİLTRELEME ---
+    async function fetchData() {
+        const minSkor = document.getElementById('skorRange').value;
+        const maxKira = document.getElementById('kiraRange').value;
+
+        // Slider etiketlerini güncelle
+        document.getElementById('scoreVal').innerText = minSkor;
+        document.getElementById('rentVal').innerText = '₺' + (maxKira/1000) + 'K';
+
+        try {
+            const res = await fetch(`/api/yeni-sube-analiz?min_skor=${minSkor}&max_kira=${maxKira}`);
+            allLocations = await res.json();
+            updateUI(allLocations);
+            
+            if(allLocations.length > 0) selectLocation(0); // İlk lokasyonu otomatik seç
+        } catch(e) { console.error("Veri çekme hatası:", e); }
+    }
+
+    function updateFilters() { fetchData(); }
+
+    // --- 5. ARAYÜZÜ GÜNCELLE (LİSTE VE HARİTA PİNLERİ) ---
+    function updateUI(data) {
+        const listContainer = document.getElementById('locationList');
+        const topListContainer = document.getElementById('topList');
+        listContainer.innerHTML = '';
+        topListContainer.innerHTML = '';
+
+        // Eski pinleri temizle
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        var orangeIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: "<div style='background-color:#ff9f43; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 15px #ff9f43;'></div>",
+            iconSize: [14, 14], iconAnchor: [7, 7]
+        });
+
+        data.forEach((loc, index) => {
+            const lat = parseFloat(loc.lat);
+            const lng = parseFloat(loc.lng);
+
+            listContainer.innerHTML += `
+                <label class="radio-item">
+                    <input type="radio" name="loc" value="${index}" onchange="selectLocation(${index})">
+                    <span>${loc.lokasyon_adi} - Skor: ${loc.potansiyel_skoru}</span>
+                </label>`;
+
+            if(index < 3) {
+                topListContainer.innerHTML += `
+                    <li class="top-item">
+                        <span>${index+1}. ${loc.lokasyon_adi}</span>
+                        <span style="background:rgba(0,0,0,0.1); padding:2px 6px; border-radius:4px;">${loc.potansiyel_skoru}</span>
+                    </li>`;
+            }
+
+            const marker = L.marker([lat, lng], {icon: orangeIcon})
+                .bindPopup(`<b>${loc.lokasyon_adi}</b><br>Skor: ${loc.potansiyel_skoru}`)
+                .addTo(map)
+                .on('click', () => selectLocation(index));
+            markers.push(marker);
+        });
+        updateRoiChart(data);
+    }
+
+    // --- 6. LOKASYON SEÇİMİ VE ANALİZ MOTORU ---
+    function selectLocation(index) {
+        const loc = allLocations[index];
+        if(!loc) return;
+
+        const radio = document.querySelector(`input[name="loc"][value="${index}"]`);
+        if(radio) radio.checked = true;
+
+        // Sayısal dönüşümler (Hata önleyici)
+        const aylikKar = parseFloat(loc.tahmini_aylik_kar);
+        const kira = parseFloat(loc.tahmini_kira);
+        const yatirim = parseFloat(loc.toplam_yatirim_maliyeti);
+        const roi = parseFloat(loc.roi_suresi);
+        const lat = parseFloat(loc.lat);
+        const lng = parseFloat(loc.lng);
+
+        // Metrikleri Yazdır
+        const tahminiCiro = (aylikKar * 1.3) + kira; 
+        document.getElementById('tahminiCiro').innerText = '₺' + (tahminiCiro / 1000).toFixed(0) + 'K';
+        document.getElementById('tahminiKar').innerText = '₺' + (aylikKar / 1000).toFixed(0) + 'K';
+        document.getElementById('totalYatirim').innerText = 'Toplam Yatırım: ₺' + (yatirim/1000).toFixed(0) + 'K';
+
+        // ROI ANALİZ VE RENKLENDİRME
+        const roiValEl = document.getElementById('roiVal');
+        const roiVerdictEl = document.getElementById('roiVerdict');
+        roiValEl.innerText = roi + ' Ay';
+
+        if (roi <= 14) {
+            roiVerdictEl.innerHTML = '<i class="fas fa-star"></i> MÜKEMMEL FIRSAT';
+            roiVerdictEl.style.color = '#006400'; 
+        } else if (roi <= 24) {
+            roiVerdictEl.innerHTML = '<i class="fas fa-check"></i> MAKUL YATIRIM';
+            roiVerdictEl.style.color = '#2b1b12'; 
+        } else {
+            roiVerdictEl.innerHTML = '<i class="fas fa-times-circle"></i> RİSKLİ / VERİMSİZ';
+            roiVerdictEl.style.color = '#c0392b'; 
+        }
+
+        // Grafikleri Güncelle
+        updateCostChart([yatirim * 0.40, yatirim * 0.35, yatirim * 0.15, yatirim * 0.10]);
+        map.flyTo([lat, lng], 16, { animate: true });
+        generateNearbyPOIs(lat, lng);
+    }
+
+    // --- 7. GRAFİK FONKSİYONLARI ---
+    function updateCostChart(dataValues) {
+        const ctx = document.getElementById('costChart');
+        const existingChart = Chart.getChart(ctx);
+        if (existingChart) existingChart.destroy();
+
+        costChart = new Chart(ctx, {
+            type: 'bar', indexAxis: 'y',
+            data: {
+                labels: ['Kira & Depozito', 'Dekorasyon', 'Ekipman', 'Lisanslar'],
+                datasets: [{ label: 'Maliyet', data: dataValues, backgroundColor: ['#ff9f43', '#7d3cff', '#00b894', '#54a0ff'], borderRadius: 5 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { ticks: { color: 'white' } } } }
+        });
+    }
+
+    function updateRoiChart(locations) {
+        const ctx = document.getElementById('roiChart');
+        const existingChart = Chart.getChart(ctx);
+        if (existingChart) existingChart.destroy();
+
+        const topLocs = locations.slice(0, 6);
+        roiChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: topLocs.map(l => l.lokasyon_adi),
+                datasets: [{ label: 'ROI (Ay)', data: topLocs.map(l => l.roi_suresi), backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 4 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#1e130c', font:{weight:'bold'} } }, y: { display: false } } }
+        });
+    }
+
+    // --- 8. ÇEVRE ANALİZİ (POI SİMÜLASYONU) ---
+    function generateNearbyPOIs(lat, lng) {
+        poiMarkers.forEach(m => map.removeLayer(m));
+        poiMarkers = [];
+        const randomCoord = () => (Math.random() - 0.5) * 0.006; 
+        const types = [
+            { type: 'Rakip', color: '#ff4757', icon: 'fa-mug-hot' },
+            { type: 'Okul', color: '#2ed573', icon: 'fa-graduation-cap' },
+            { type: 'AVM', color: '#a55eea', icon: 'fa-shopping-bag' }
+        ];
+
+        types.forEach(p => {
+            const marker = L.marker([lat + randomCoord(), lng + randomCoord()], {
+                icon: L.divIcon({
+                    className: 'poi-icon',
+                    html: `<div style="background-color:${p.color}; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 2px 5px black;"><i class="fas ${p.icon}" style="font-size:14px; color:white;"></i></div>`
+                })
+            }).bindPopup(`<b>${p.type}</b>`).addTo(map);
+            poiMarkers.push(marker);
+        });
+    }
+
+    // --- 9. SIDEBAR ---
+    function setupSidebar() {
+        const btn = document.getElementById('sidebarToggle');
+        btn.addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+            setTimeout(() => { window.dispatchEvent(new Event('resize')); if(map) map.invalidateSize(); }, 300);
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Soulmate KDS - Genel Bakış</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-body: #2b1b12;
+            --bg-sidebar: #1e130c;
+            --panel-bg: #3d2b1f;
+            --card-bg: #2c211b; /* Kartlar için biraz daha açık ton */
+            --active-orange: #ff9f43;
+            --text-white: #ffffff;
+            --text-muted: #b3a296;
+        }
+
+        * { box-sizing: border-box; }
+        body { display: flex; margin: 0; height: 100vh; background-color: var(--bg-body); color: var(--text-white); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+        /* SIDEBAR (Aynı Kalıyor) */
+        aside { width: 250px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; transition: width 0.3s ease; position: relative; z-index: 1000; }
+        aside.collapsed { width: 70px; }
+        aside.collapsed .brand-text, aside.collapsed nav ul li a span, aside.collapsed .user-profile .brand-text { display: none; }
+        aside.collapsed .brand, aside.collapsed nav ul li a, aside.collapsed .user-profile { justify-content: center; }
+        .toggle-btn { background: rgba(255, 255, 255, 0.1); color: var(--active-orange); border: none; cursor: pointer; position: absolute; top: 25px; right: 10px; width: 25px; height: 25px; border-radius: 5px; display: flex; align-items: center; justify-content: center; transition: 0.3s; z-index: 10; }
+        aside.collapsed .toggle-btn { right: 50%; transform: translateX(50%) rotate(180deg); top: 85px; }
+        .brand { padding: 25px; font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; gap: 10px; height: 80px; }
+        nav { flex: 1; } nav ul { list-style: none; padding: 0; margin: 0; }
+        nav ul li a { display: flex; align-items: center; gap: 10px; padding: 15px 25px; color: var(--text-muted); text-decoration: none; transition: 0.3s; height: 50px; }
+        nav ul li.active a { background-color: var(--active-orange); color: #1e130c; font-weight: bold; border-radius: 0 25px 25px 0; margin-right: 20px; }
+        aside.collapsed nav ul li.active a { border-radius: 0; margin-right: 0; }
+        .user-profile { margin-top: auto; padding: 20px; display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+
+        /* MAIN AREA */
+        main { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 15px; overflow-y: auto; }
+        header { display: flex; justify-content: space-between; align-items: center; }
+        header h1 { margin: 0; font-size: 1.5rem; color: var(--active-orange); }
+
+        /* YENİ DASHBOARD YAPISI (Izgara) */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 260px 1fr; /* Sol Filtre | Sağ İçerik */
+            gap: 20px;
+            height: 100%;
+        }
+
+        .left-col { display: flex; flex-direction: column; gap: 15px; }
+        .filter-card { background-color: var(--panel-bg); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .filter-header { color: var(--active-orange); font-weight: bold; margin-bottom: 10px; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        
+        .branch-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .radio-item { display: flex; align-items: center; cursor: pointer; color: #ccc; font-size: 0.85rem; }
+        .radio-item input { margin-right: 8px; accent-color: var(--active-orange); }
+
+       
+        .grid-select { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+        .grid-btn {
+            background: rgba(255,255,255,0.05); border: none; color: #ccc; 
+            padding: 6px 0; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.2s;
+        }
+        .grid-btn:hover { background: rgba(255,255,255,0.1); }
+        .grid-btn.active { background-color: var(--active-orange); color: #1e130c; font-weight: bold; }
+
+        .right-col { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        
+        /* KPI KARTLARI (En Üst) */
+        .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .kpi-card { 
+            background: var(--card-bg); border-radius: 12px; padding: 15px; 
+            display: flex; align-items: center; gap: 15px; border-left: 4px solid;
+        }
+        .kpi-icon { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .kpi-info h3 { margin: 0; font-size: 0.8rem; color: var(--text-muted); font-weight: normal; }
+        .kpi-info h2 { margin: 2px 0 0 0; font-size: 1.4rem; font-weight: bold; }
+
+        
+        .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; min-height: 300px; }
+        .chart-row-bottom { display: grid; grid-template-columns: 1fr 2fr; gap: 15px; min-height: 250px; } /* Alt satır düzeni */
+
+        .chart-card { background: var(--card-bg); border-radius: 12px; padding: 15px; display: flex; flex-direction: column; position: relative; }
+        .chart-header { font-size: 0.9rem; font-weight: bold; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .chart-container { flex: 1; position: relative; min-height: 0; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #5d4037; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <button class="toggle-btn" id="sidebarToggle"><i class="fas fa-chevron-left"></i></button>
+        <div class="brand"><i class="fas fa-coffee"></i> <span class="brand-text">Soulmate KDS</span></div>
+        <nav>
+            <ul>
+                <li class="active"><a href="genel.html"><i class="fas fa-th-large"></i> <span>Genel Bakış</span></a></li>
+                <li><a href="sube.html"><i class="fas fa-chart-line"></i> <span>Şube Performansı</span></a></li>
+                <li><a href="yeni_sube.html"><i class="fas fa-map-marker-alt"></i> <span>Yeni Şube Analizi</span></a></li>
+                <li><a href="urun.html"><i class="fas fa-utensils"></i> <span>Ürün Analizi</span></a></li>
+                <li><a href="tedarikciler.html"><i class="fas fa-truck"></i> <span>Tedarikçiler</span></a></li>
+            </ul>
+        </nav>
+        <div class="user-profile">
+            <i class="fas fa-user-circle" style="font-size: 1.5rem; color: #f38d1d;"></i>
+            <div class="brand-text" style="font-size: 0.8rem;"><div>Yönetici</div><div style="color: #666; font-size: 0.7rem;">admin@soulmate.com</div></div>
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <div><h1>Genel Bakış</h1><p>20 Aralık 2025</p></div>
+            <div><i class="far fa-bell"></i></div>
+        </header>
+
+        <div class="dashboard-grid">
+            
+            <div class="left-col">
+                <div class="filter-card">
+                    <div class="filter-header">Şube Seçimi</div>
+                    <div class="branch-list" id="subeListesiContainer">Loading...</div>
+                </div>
+
+                <div class="filter-card">
+                    <div class="filter-header">Yıl</div>
+                    <div class="grid-select" id="yearButtonsContainer"></div>
+                </div>
+
+                <div class="filter-card">
+                    <div class="filter-header">Dönem (Ay)</div>
+                    <div class="grid-select" id="monthButtonsContainer">
+                        <button class="grid-btn active" onclick="aySec(this, 'all')">Tümü</button>
+                        <button class="grid-btn" onclick="aySec(this, '01')">Oca</button>
+                        <button class="grid-btn" onclick="aySec(this, '02')">Şub</button>
+                        <button class="grid-btn" onclick="aySec(this, '03')">Mar</button>
+                        <button class="grid-btn" onclick="aySec(this, '04')">Nis</button>
+                        <button class="grid-btn" onclick="aySec(this, '05')">May</button>
+                        <button class="grid-btn" onclick="aySec(this, '06')">Haz</button>
+                        <button class="grid-btn" onclick="aySec(this, '07')">Tem</button>
+                        <button class="grid-btn" onclick="aySec(this, '08')">Ağu</button>
+                        <button class="grid-btn" onclick="aySec(this, '09')">Eyl</button>
+                        <button class="grid-btn" onclick="aySec(this, '10')">Eki</button>
+                        <button class="grid-btn" onclick="aySec(this, '11')">Kas</button>
+                        <button class="grid-btn" onclick="aySec(this, '12')">Ara</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                
+                <div class="kpi-row">
+                    <div class="kpi-card" style="border-color:#7d3cff;">
+                        <div class="kpi-icon" style="background:rgba(125,60,255,0.2); color:#7d3cff;"><i class="fas fa-wallet"></i></div>
+                        <div class="kpi-info"><h3>Toplam Ciro</h3><h2 id="kpiCiro">...</h2></div>
+                    </div>
+                    <div class="kpi-card" style="border-color:#ff9f43;">
+                        <div class="kpi-icon" style="background:rgba(255,159,67,0.2); color:#ff9f43;"><i class="fas fa-chart-line"></i></div>
+                        <div class="kpi-info"><h3>Ortalama Ciro</h3><h2 id="kpiOrtalama">...</h2></div>
+                    </div>
+                    <div class="kpi-card" style="border-color:#2ecc71;">
+                        <div class="kpi-icon" style="background:rgba(46,204,113,0.2); color:#2ecc71;"><i class="fas fa-coins"></i></div>
+                        <div class="kpi-info"><h3>Net Kâr</h3><h2 id="kpiKar">...</h2></div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-card">
+                        <div class="chart-header"><span>CİRO TRENDİ</span> <i class="fas fa-ellipsis-h"></i></div>
+                        <div class="chart-container"><canvas id="ciroChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header"><span>ŞUBE DAĞILIMI</span></div>
+                        <div class="chart-container"><canvas id="subeChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="chart-row-bottom">
+                    <div class="chart-card" style="grid-column: span 2;"> <div class="chart-header"><span>KATEGORİ PERFORMANSI (TOP 5)</span> <span style="font-size:0.7rem; color:#8cc63f;">Kâr Marjı Analizi</span></div>
+                        <div class="chart-container">
+                            <canvas id="kategoriChart"></canvas> </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+     
+        let seciliYil = 'all';
+        let seciliAy = 'all';
+        let ciroChartInstance, subeChartInstance, kategoriChartInstance;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupSidebar();
+            yillariYukle();
+            subeleriYukle();
+        });
+
+     
+        async function subeleriYukle() {
+            try {
+                const res = await fetch('/api/subeler');
+                const data = await res.json();
+                const container = document.getElementById('subeListesiContainer');
+                let html = `<label class="radio-item"><input type="radio" name="sube" value="all" checked onchange="veriGetir()"> <span style="color:#ff9f43; font-weight:bold;">Tüm Şubeler</span></label>`;
+                data.forEach(s => {
+                    html += `<label class="radio-item"><input type="radio" name="sube" value="${s.sube_id}" onchange="veriGetir()"> ${s.sube_adi}</label>`;
+                });
+                container.innerHTML = html;
+            } catch(e) { console.error(e); }
+        }
+
+        // 2. YILLARI YÜKLE
+        async function yillariYukle() {
+            try {
+                const res = await fetch('/api/mevcut-yillar');
+                const data = await res.json();
+                const container = document.getElementById('yearButtonsContainer');
+                container.innerHTML = `<button class="grid-btn active" onclick="yilSec(this, 'all')">Tümü</button>`;
+                data.forEach(y => {
+                    container.innerHTML += `<button class="grid-btn" onclick="yilSec(this, '${y.yil}')">${y.yil}</button>`;
+                });
+                veriGetir(); // Başlangıç verisi
+            } catch(e) { console.error(e); }
+        }
+
+        function yilSec(btn, yil) {
+            document.querySelectorAll('#yearButtonsContainer .grid-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            seciliYil = yil;
+            veriGetir();
+        }
+
+        function aySec(btn, ay) {
+            document.querySelectorAll('#monthButtonsContainer .grid-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            seciliAy = ay;
+            veriGetir();
+        }
+
+        // 3. VERİ ÇEKME VE DAĞITMA
+        async function veriGetir() {
+            const sube = document.querySelector('input[name="sube"]:checked')?.value || 'all';
+            
+            try {
+                const res = await fetch(`/api/genel-bakis?yil=${seciliYil}&ay=${seciliAy}&sube_id=${sube}`);
+                const data = await res.json();
+
+                // KPI
+                document.getElementById('kpiCiro').innerText = '₺' + (data.kpi.ciro / 1000).toFixed(0) + 'K';
+                document.getElementById('kpiOrtalama').innerText = '₺' + (data.kpi.ortalama / 1000).toFixed(0) + 'K';
+                document.getElementById('kpiKar').innerText = '₺' + (data.kpi.kar / 1000).toFixed(0) + 'K';
+
+                // Grafikler
+                updateCiroChart(data.trend);
+                updateSubeChart(data.subeDagilimi);
+                updateKategoriChart(data.kategori);
+
+            } catch(e) { console.error(e); }
+        }
+
+        // --- GRAFİKLER ---
+
+        function updateCiroChart(data) {
+            const ctx = document.getElementById('ciroChart');
+            if (ciroChartInstance) ciroChartInstance.destroy();
+
+            ciroChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.donem_ay_yil),
+                    datasets: [{
+                        label: 'Ciro', data: data.map(d => d.ciro),
+                        borderColor: '#7d3cff', backgroundColor: 'rgba(125, 60, 255, 0.1)',
+                        borderWidth: 3, pointRadius: 2, tension: 0.4, fill: true
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        x: { grid: { display: false }, ticks: { color: '#888' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', callback: v => v/1000 + 'K' } }
+                    }
+                }
+            });
+        }
+
+        function updateSubeChart(data) {
+            const ctx = document.getElementById('subeChart');
+            if (subeChartInstance) subeChartInstance.destroy();
+
+            subeChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(d => d.sube_adi),
+                    datasets: [{
+                        data: data.map(d => d.ciro),
+                        backgroundColor: ['#7d3cff', '#ff9f43', '#2ecc71', '#ff6b6b', '#feca57'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '75%',
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function updateKategoriChart(data) {
+            const ctx = document.getElementById('kategoriChart');
+            if (kategoriChartInstance) kategoriChartInstance.destroy();
+
+            // Veriyi Kâr'a göre sırala ve ilk 5'i al (Grafik dolgun dursun)
+            const topData = data.sort((a,b) => b.kar - a.kar).slice(0, 5);
+
+            kategoriChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topData.map(d => d.kategori),
+                    datasets: [
+                        { label: 'Satış', data: topData.map(d => d.satis), backgroundColor: '#ff9f43', borderRadius: 4, barPercentage: 0.6 },
+                        { label: 'Kâr', data: topData.map(d => d.kar), backgroundColor: '#2ecc71', borderRadius: 4, barPercentage: 0.6 }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y', // YATAY BAR (Daha şık ve boşluğu doldurur)
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { color: '#ccc', usePointStyle: true } } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' } },
+                        y: { grid: { display: false }, ticks: { color: '#fff' } }
+                    }
+                }
+            });
+        }
+
+        function setupSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            document.getElementById('sidebarToggle').addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+            });
+        }
+    </script>
+</body>
+</html>

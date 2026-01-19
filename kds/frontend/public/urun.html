@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Soulmate KDS - Akıllı Ürün Yönetimi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+                :root {
+            --bg-body: #2b1b12; --bg-sidebar: #1e130c; --panel-bg: #3d2b1f;
+            --card-purple: #7d3cff; --card-green: #8cc63f; --active-orange: #ff9f43;
+            --text-white: #ffffff; --text-gray: #b3a296; --card-blue: #00d2d3;
+            --star-color: #f1c40f; --cow-color: #2ecc71; --ques-color: #9b59b6; --dog-color: #e74c3c;
+        }
+        * { box-sizing: border-box; }
+        body { display: flex; margin: 0; height: 100vh; background-color: var(--bg-body); color: var(--text-white); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+                aside { width: 250px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; transition: width 0.3s ease; position: relative; z-index: 1000; }
+        aside.collapsed { width: 70px; }
+        aside.collapsed .brand-text, aside.collapsed nav ul li a span, aside.collapsed .user-profile .brand-text { display: none; }
+        aside.collapsed .brand, aside.collapsed nav ul li a, aside.collapsed .user-profile { justify-content: center; }
+        .toggle-btn { background: rgba(255, 255, 255, 0.1); color: var(--active-orange); border: none; cursor: pointer; position: absolute; top: 25px; right: 10px; width: 25px; height: 25px; border-radius: 5px; display: flex; align-items: center; justify-content: center; transition: 0.3s; z-index: 10; }
+        aside.collapsed .toggle-btn { right: 50%; transform: translateX(50%) rotate(180deg); top: 85px; }
+        .brand { padding: 25px; font-size: 1.2rem; font-weight: bold; color: white; display: flex; align-items: center; gap: 10px; height: 80px; }
+        nav { flex: 1; } nav ul { list-style: none; padding: 0; margin: 0; }
+        nav ul li a { display: flex; align-items: center; gap: 10px; padding: 15px 25px; color: var(--text-gray); text-decoration: none; transition: 0.3s; height: 50px; }
+        nav ul li.active a { background-color: var(--active-orange); color: #1e130c; font-weight: bold; border-radius: 0 25px 25px 0; margin-right: 20px; }
+        aside.collapsed nav ul li.active a { border-radius: 0; margin-right: 0; }
+        .user-profile { margin-top: auto; padding: 20px; display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+
+                main { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 15px; overflow: hidden; }
+        header { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; height: 50px; }
+        header h1 { margin: 0; font-size: 1.5rem; color: var(--active-orange); }
+        
+        .dashboard-container { 
+            display: grid; 
+            grid-template-columns: 320px 1fr 300px;             gap: 20px; 
+            height: calc(100vh - 100px); 
+            overflow: hidden; 
+        }
+
+                .left-panel { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 5px; }
+        .panel-card { background-color: var(--panel-bg); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+        
+                .ai-card { border: 1px solid var(--active-orange); background: linear-gradient(135deg, rgba(61,43,31,0.9) 0%, rgba(30,19,12,0.95) 100%); }
+        .ai-suggestion { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); transition: 0.2s; }
+        .ai-suggestion:hover { background: rgba(255, 159, 67, 0.1); }
+        .ai-suggestion:last-child { border-bottom: none; }
+        .ai-text { font-size: 0.85rem; color: #ddd; }
+        .ai-sub { font-size: 0.7rem; color: var(--active-orange); display: block; margin-top: 2px; }
+        .btn-add-sim { background: var(--card-green); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: bold; }
+        .btn-add-sim:hover { transform: scale(1.05); }
+
+        .panel-title { color: var(--active-orange); font-weight: bold; margin-bottom: 10px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+        
+                .grid-select { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; }
+        .grid-btn { background: rgba(255,255,255,0.05); border: none; color: #ccc; padding: 6px 0; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: 0.2s; }
+        .grid-btn:hover { background: rgba(255,255,255,0.1); }
+        .grid-btn.active { background-color: var(--active-orange); color: #1e130c; font-weight: bold; }
+
+                .input-group { margin-bottom: 10px; }
+        .input-group label { display: block; font-size: 0.8rem; color: #ccc; margin-bottom: 4px; }
+        .input-group input { width: 100%; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 5px; font-size: 0.9rem; }
+        .btn-sim { width: 100%; background: var(--active-orange); color: #1e130c; border: none; padding: 10px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        
+                .center-panel { display: flex; flex-direction: column; gap: 20px; height: 100%; overflow: hidden; }
+        .chart-card { background-color: var(--card-purple); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; flex: 3; min-height: 0; }
+        .bottom-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex: 2; min-height: 0; }
+        .sub-card { background-color: var(--panel-bg); border-radius: 16px; padding: 15px; display: flex; flex-direction: column; overflow: hidden; }
+        .bg-green { background-color: var(--card-green); color: #1e130c; }
+        .chart-wrapper { flex: 1; position: relative; min-height: 0; }
+
+                .right-panel { display: flex; flex-direction: column; gap: 15px; height: 100%; overflow: hidden; }
+        .metric-card { padding: 15px; border-radius: 12px; color: white; display: flex; flex-direction: column; justify-content: center; min-height: 90px; flex-shrink: 0; }
+        .bg-blue { background-color: var(--card-blue); color: #1e130c; }
+        .bg-yellow { background-color: #f1c40f; color: #1e130c; }
+        
+        .bg-white { 
+            background-color: white; 
+            color: #1e130c; 
+            border-radius: 12px; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            flex: 1; 
+            min-height: 0; 
+            overflow: hidden;
+        }
+        
+        .metric-title { font-size: 0.85rem; opacity: 0.9; margin-bottom: 5px; }
+        .metric-val { font-size: 1.4rem; font-weight: bold; }
+
+                .custom-scroll {
+            flex: 1; 
+            overflow-y: auto; 
+            padding-right: 5px;
+        }
+        
+        .product-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .badge-star { background: var(--star-color); color: #333; }
+        .badge-cow { background: var(--cow-color); color: white; }
+        .badge-dog { background: var(--dog-color); color: white; }
+        .badge-q { background: var(--ques-color); color: white; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        
+        canvas { width: 100% !important; height: 100% !important; }
+    </style>
+</head>
+<body>
+
+    <aside id="sidebar">
+        <button class="toggle-btn" id="sidebarToggle"><i class="fas fa-chevron-left"></i></button>
+        <div class="brand"><i class="fas fa-coffee"></i> Soulmate KDS</div>
+        <nav>
+            <ul>
+                <li><a href="genel.html"><i class="fas fa-th-large"></i> Genel Bakış</a></li>
+                <li><a href="sube.html"><i class="fas fa-chart-line"></i> Şube Performansı</a></li>
+                <li><a href="yeni_sube.html"><i class="fas fa-map-marker-alt"></i> Yeni Şube Analizi</a></li>
+                <li class="active"><a href="urun.html"><i class="fas fa-utensils"></i> Ürün Analizi</a></li>
+                <li><a href="tedarikciler.html"><i class="fas fa-truck"></i> Tedarikçiler</a></li>
+            </ul>
+        </nav>
+        <div class="user-profile">
+            <i class="fas fa-user-circle" style="font-size: 1.5rem; color: #f38d1d;"></i>
+            <div class="brand-text" style="font-size: 0.8rem;"><div>Yönetici</div><div style="color: #666; font-size: 0.7rem;">admin@soulmate.com</div></div>
+        </div>
+    </aside>
+
+    <main>
+        <header>
+            <h1>Ürün Portföyü & Simülasyon</h1>
+            <div style="color:#b3a296;">KDS v2.1</div>
+        </header>
+
+        <div class="dashboard-container">
+            
+            <div class="left-panel">
+                
+                <div class="panel-card">
+                    <div class="panel-title">Dönem Seçimi</div>
+                    <div class="grid-select" id="yearButtons"></div>
+                    </div>
+
+                <div class="panel-card ai-card">
+                    <div class="panel-title"><i class="fas fa-robot"></i> Rakip Fırsat Önerileri</div>
+                    <div id="aiSuggestions" class="custom-scroll" style="max-height: 180px;">
+                        <div style="color:#888; font-size:0.8rem;">Veriler analiz ediliyor...</div>
+                    </div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-title">Simülasyon Parametreleri</div>
+                    <div class="input-group">
+                        <label>Ürün Adı</label>
+                        <input type="text" id="simName" value="Yeni Ürün">
+                    </div>
+                    <div class="input-group">
+                        <label>Satış Fiyatı (TL)</label>
+                        <input type="number" id="simPrice" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Birim Maliyet (TL)</label>
+                        <input type="number" id="simCost" value="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Tahmini Aylık Satış</label>
+                        <input type="number" id="simVol" value="1000">
+                    </div>
+                    <button class="btn-sim" onclick="runSimulation()">SİMÜLASYONU BAŞLAT</button>
+                </div>
+            </div>
+
+            <div class="center-panel">
+                <div class="chart-card">
+                    <div class="chart-title" style="color:white;">BCG MATRİSİ: PAZAR PAYI vs KARLILIK</div>
+                    <div class="chart-wrapper">
+                        <canvas id="bcgChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bottom-charts">
+                    <div class="sub-card">
+                        <div class="chart-title" style="color:var(--active-orange); font-size:0.9rem;">PORTFÖY DAĞILIMI</div>
+                        <div class="chart-wrapper"><canvas id="pieChart"></canvas></div>
+                    </div>
+                    <div class="sub-card bg-green">
+                        <div class="chart-title" style="color:#1e130c; font-size:0.9rem;">TOPLAM AYLIK NET KÂR</div>
+                        <div class="chart-wrapper"><canvas id="barChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="metric-card bg-blue">
+                    <div class="metric-title">Yeni Ürün Tahmini</div>
+                    <div class="metric-val" id="simResultText" style="font-size: 1rem;">Analiz Bekleniyor...</div>
+                </div>
+
+                <div class="metric-card bg-yellow">
+                    <div class="metric-title">Yıldız Ürün Sayısı</div>
+                    <div class="metric-val" id="starCount">...</div>
+                </div>
+
+                <div class="bg-white">
+                    <div class="chart-title" style="color:#333; border-bottom:1px solid #eee; padding-bottom:10px;">Ürün Performans Listesi</div>
+                    <div id="productList" class="custom-scroll">
+                        <p style="color:#888;">Yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- DEĞİŞKENLER ---
+        let bcgChart = null, pieChart = null, barChart = null;
+        let allProducts = []; 
+        let simulationData = null;
+        let seciliYil = 'all';
+
+        // Rakip Veritabanı (Mock Data - KDS Mantığı İçin)
+        const competitorProducts = [
+            { name: "Bubble Tea", price: 110, cost: 35, vol: 2500, reason: "Genç kitle trendi (Rakip A)" },
+            { name: "Matcha Latte", price: 95, cost: 40, vol: 1500, reason: "Sağlıklı yaşam segmenti" },
+            { name: "Pumpkin Spice", price: 105, cost: 38, vol: 1800, reason: "Sezonluk fırsat ürünü" },
+            { name: "Lotus Cheesecake", price: 160, cost: 90, vol: 900, reason: "Yüksek marjlı tatlı" }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupSidebar();
+            initYears();
+            fetchData();
+        });
+
+        // 1. YILLARI YÜKLE
+        async function initYears() {
+            try {
+                const res = await fetch('/api/mevcut-yillar');
+                const years = await res.json();
+                const container = document.getElementById('yearButtons');
+                container.innerHTML = `<button class="grid-btn active" onclick="yilSec(this, 'all')">Tümü</button>`;
+                years.forEach(y => {
+                    container.innerHTML += `<button class="grid-btn" onclick="yilSec(this, '${y.yil}')">${y.yil}</button>`;
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        function yilSec(btn, yil) {
+            document.querySelectorAll('#yearButtons .grid-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            seciliYil = yil;
+            fetchData();
+        }
+
+        // 2. VERİLERİ ÇEK & RAKİP ANALİZİ YAP
+        async function fetchData() {
+            try {
+                // Ay filtresini URL'den kaldırdık
+                const res = await fetch(`/api/urun-analiz?yil=${seciliYil}&cat=all`);
+                allProducts = await res.json();
+                
+                calculateMetrics();
+                generateCompetitorInsights(); // Yeni Analiz
+                processAndRender();
+            } catch(e) { console.error("Veri Hatası:", e); }
+        }
+
+        // --- YENİ: RAKİP ÜRÜN ÖNERİ MOTORU ---
+        function generateCompetitorInsights() {
+            const container = document.getElementById('aiSuggestions');
+            container.innerHTML = '';
+
+            // Menümüzde zaten var olan ürünleri bul
+            const currentNames = allProducts.map(p => p.urun_adi.toLowerCase());
+
+            competitorProducts.forEach(comp => {
+                // Eğer ürün menümüzde yoksa veya çok farklı isimdeyse öner
+                if (!currentNames.some(name => name.includes(comp.name.toLowerCase()))) {
+                    const html = `
+                        <div class="ai-suggestion">
+                            <div>
+                                <div class="ai-text">${comp.name}</div>
+                                <span class="ai-sub">${comp.reason}</span>
+                            </div>
+                            <button class="btn-add-sim" onclick="fillSimulation('${comp.name}', ${comp.price}, ${comp.cost}, ${comp.vol})">
+                                <i class="fas fa-plus"></i> Dene
+                            </button>
+                        </div>
+                    `;
+                    container.innerHTML += html;
+                }
+            });
+
+            if(container.innerHTML === '') {
+                container.innerHTML = '<div style="color:#aaa; font-size:0.8rem; padding:10px;">Menünüz rakiplerle rekabetçi seviyede!</div>';
+            }
+        }
+
+        function fillSimulation(name, price, cost, vol) {
+            document.getElementById('simName').value = name;
+            document.getElementById('simPrice').value = price;
+            document.getElementById('simCost').value = cost;
+            document.getElementById('simVol').value = vol;
+            runSimulation(); // Otomatik çalıştır
+        }
+
+        // 3. METRİK HESAPLAMA (EŞİKLER GÜNCEL)
+        function calculateMetrics() {
+            allProducts = allProducts.map(p => {
+                const price = parseFloat(p.satis_fiyati);
+                const cost = parseFloat(p.maliyet_fiyati);
+                const vol = parseInt(p.toplam_adet);
+
+                const margin = ((price - cost) / price) * 100;
+                const revenue = price * vol;
+                const profit = (price - cost) * vol;
+                
+                // --- EŞİK DEĞERLERİ (%45 ve 1000 Adet) ---
+                let cat = 'Düşük Performans'; 
+                if(margin >= 45 && vol >= 1000) cat = 'Yıldız';          
+                else if(margin < 45 && vol >= 1000) cat = 'Nakit Deposu'; 
+                else if(margin >= 45 && vol < 1000) cat = 'Fırsat';       
+                
+                return { ...p, margin, revenue, profit, cat };
+            });
+        }
+
+        // 4. SİMÜLASYON
+        function runSimulation() {
+            const name = document.getElementById('simName').value;
+            const price = parseFloat(document.getElementById('simPrice').value);
+            const cost = parseFloat(document.getElementById('simCost').value);
+            const vol = parseFloat(document.getElementById('simVol').value);
+
+            if(!name || !price || !cost || !vol) return;
+
+            const margin = ((price - cost) / price) * 100;
+            const revenue = price * vol;
+            const profit = (price - cost) * vol;
+            
+            let cat = 'Düşük Performans';
+            if(margin >= 45 && vol >= 1000) cat = 'Yıldız';
+            else if(margin < 45 && vol >= 1000) cat = 'Nakit Deposu';
+            else if(margin >= 45 && vol < 1000) cat = 'Fırsat';
+
+            simulationData = { urun_adi: name + " (Sim)", satis_fiyati: price, maliyet_fiyati: cost, toplam_adet: vol, margin, revenue, profit, cat, isSim: true };
+            
+            const resultBox = document.getElementById('simResultText');
+            let color = "#e74c3c"; 
+            if(cat === 'Yıldız') color = "#f1c40f";
+            if(cat === 'Nakit Deposu') color = "#2ecc71";
+            if(cat === 'Fırsat') color = "#9b59b6";
+
+            resultBox.innerHTML = `
+                <div style="font-size:1.2rem; font-weight:bold; color:${color};">${cat}</div>
+                <div style="font-size:0.8rem;">Marj: %${margin.toFixed(0)} | Kâr: ₺${(profit/1000).toFixed(1)}K</div>
+            `;
+            
+            processAndRender();
+        }
+
+        // 5. RENDER
+        function processAndRender() {
+            let data = [...allProducts];
+            if(simulationData) data.push(simulationData);
+            
+            updateBCGChart(data);
+            updatePieChart(data);
+            updateBarChart(data);
+            updateList(data);
+        }
+
+        // --- GRAFİKLER ---
+        function updateBCGChart(data) {
+            const ctx = document.getElementById('bcgChart');
+            if(!ctx) return;
+            const existingChart = Chart.getChart(ctx);
+            if (existingChart) existingChart.destroy();
+
+            const cleanData = data.map(p => {
+                const xVal = parseFloat(p.toplam_adet) || 0;
+                const yVal = parseFloat(p.margin) || 0;
+                const revenue = parseFloat(p.revenue) || 0;
+                let rVal = p.isSim ? 20 : Math.sqrt(revenue) / 30;
+                if(rVal > 50) rVal = 50; if(rVal < 4) rVal = 4;
+
+                return { x: xVal, y: yVal, r: rVal, pName: p.urun_adi || 'Bilinmeyen', profit: p.profit || 0 };
+            }).filter(p => p.x > 0);
+
+            bcgChart = new Chart(ctx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Ürünler',
+                        data: cleanData,
+                        backgroundColor: cleanData.map(p => {
+                            if(p.r === 20) return '#fff';
+                            if(p.y >= 45 && p.x >= 1000) return '#f1c40f'; // Yıldız
+                            if(p.y < 45 && p.x >= 1000) return '#2ecc71'; // Nakit
+                            if(p.y >= 45 && p.x < 1000) return '#9b59b6'; // Fırsat
+                            return '#e74c3c'; // Düşük
+                        }),
+                        borderColor: 'rgba(255,255,255,0.5)', borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    layout: { padding: 10 },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            callbacks: {
+                                label: function(context) {
+                                    const raw = context.raw;
+                                    return [`${raw.pName}`, `Satış: ${raw.x}`, `Marj: %${raw.y.toFixed(1)}`, `Kâr: ₺${(raw.profit/1000).toFixed(1)}K`];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: {display:true, text:'Satış Adedi', color:'#aaa'}, ticks:{color:'#ddd'}, grid:{color:'rgba(255,255,255,0.1)'} },
+                        y: { title: {display:true, text:'Marj (%)', color:'#aaa'}, ticks:{color:'#ddd'}, grid:{color:'rgba(255,255,255,0.1)'}, min:0, max:100 }
+                    }
+                }
+            });
+        }
+
+        function updatePieChart(data) {
+            const counts = {};
+            data.forEach(p => { if(!p.isSim) counts[p.cat] = (counts[p.cat] || 0) + 1; });
+            document.getElementById('starCount').innerText = (counts['Yıldız'] || 0);
+
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            const existingChart = Chart.getChart(ctx);
+            if (existingChart) existingChart.destroy();
+
+            pieChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(counts),
+                    datasets: [{ 
+                        data: Object.values(counts), 
+                        backgroundColor: ['#e74c3c', '#9b59b6', '#2ecc71', '#f1c40f'], 
+                        borderWidth: 0 
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels:{color:'white', boxWidth:10} } } }
+            });
+        }
+
+        function updateBarChart(data) {
+            const ctx = document.getElementById('barChart').getContext('2d');
+            const existingChart = Chart.getChart(ctx);
+            if (existingChart) existingChart.destroy();
+            
+            const topData = data.sort((a,b) => b.profit - a.profit).slice(0, 8);
+
+            barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topData.map(p => p.urun_adi),
+                    datasets: [{ 
+                        label: 'Net Kâr', 
+                        data: topData.map(p => p.profit), 
+                        backgroundColor: topData.map(p => p.isSim ? '#ffffff' : '#1e130c'),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { ticks: { color: '#1e130c', font:{size:9} }, grid: { display: false } }, y: { display: false } }
+                }
+            });
+        }
+
+        function updateList(data) {
+            const list = document.getElementById('productList');
+            list.innerHTML = '';
+            const realData = data.filter(p => !p.isSim).sort((a,b) => b.margin - a.margin);
+
+            realData.forEach(p => {
+                let badgeClass = 'badge-dog';
+                if(p.cat === 'Yıldız') badgeClass = 'badge-star';
+                if(p.cat === 'Nakit Deposu') badgeClass = 'badge-cow';
+                if(p.cat === 'Fırsat') badgeClass = 'badge-q';
+
+                list.innerHTML += `
+                    <div class="product-list-item">
+                        <div>
+                            <div style="font-weight:bold; font-size:0.9rem;">${p.urun_adi}</div>
+                            <span class="badge ${badgeClass}">${p.cat}</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:bold;">%${p.margin.toFixed(0)} Marj</div>
+                            <div style="font-size:0.8rem; color:#888;">₺${(p.profit/1000).toFixed(1)}K Kâr</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function setupSidebar() {
+            const btn = document.getElementById('sidebarToggle');
+            if(btn) btn.addEventListener('click', () => { document.getElementById('sidebar').classList.toggle('collapsed'); });
+        }
+    </script>
+</body>
+</html>
